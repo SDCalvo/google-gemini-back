@@ -2,6 +2,7 @@ import {
   ChatSession,
   GenerativeModel,
   GoogleGenerativeAI,
+  Part,
 } from "@google/generative-ai";
 import logger from "node-color-log";
 
@@ -45,15 +46,37 @@ export class GeminiService {
     this.chatSession[id] = this.models[GeminiModels.GEMINI_1_5_PRO].startChat();
   }
 
+  public async generateChatResponseStreamed(sessionId: number, parts: Part[]) {
+    try {
+      if (!this.chatSession || !this.chatSession[sessionId]) {
+        throw new Error("Chat session not found");
+      }
+
+      logger
+        .color("blue")
+        .log(`Sending parts to Gemini: ${JSON.stringify(parts)}`);
+      const result = await this.chatSession[sessionId].sendMessageStream(parts);
+
+      if (!result || !result.stream) {
+        throw new Error("Invalid response from Gemini API");
+      }
+
+      return result;
+    } catch (e: any) {
+      logger
+        .color("red")
+        .log(`Error in generateChatResponseStreamed: ${e.message}`);
+      throw e; // Rethrow the error to be handled by the caller
+    }
+  }
+
   public async generateChatResponse(sessionId: number, prompt: string) {
     try {
       if (!this.chatSession || !this.chatSession[sessionId]) {
         return "Chat session not found";
       }
-      const result = await this.chatSession[sessionId].sendMessageStream(
-        prompt
-      );
-      return result;
+      const result = await this.chatSession[sessionId].sendMessage(prompt);
+      return result.response.text();
     } catch (e) {
       logger.color("red").log(e);
     }
