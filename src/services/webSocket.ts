@@ -1,15 +1,22 @@
 import WebSocket from "ws";
 import logger from "node-color-log";
 import { GeminiService } from "./gemini";
-import { Part } from "@google/generative-ai"; // Import Part type
+import { TextToSpeechService } from "./tts";
+import { Part } from "@google/generative-ai";
 
 export class WebSocketService {
   private readonly ws: WebSocket;
   private geminiService: GeminiService;
+  private textToSpeechService: TextToSpeechService; // Add TTS service
 
-  constructor(ws: WebSocket, geminiService: GeminiService) {
+  constructor(
+    ws: WebSocket,
+    geminiService: GeminiService,
+    textToSpeechService: TextToSpeechService
+  ) {
     this.ws = ws;
     this.geminiService = geminiService;
+    this.textToSpeechService = textToSpeechService;
     this.setupListeners();
   }
 
@@ -97,7 +104,11 @@ export class WebSocketService {
           const parsedData = JSON.parse(dataToSend);
           logger
             .color("blue")
-            .log(`Parsed data: ${JSON.stringify(parsedData)}`);
+            .log(
+              `Parsed data: ${
+                JSON.stringify(parsedData?.candidates[0]?.content?.parts) || ""
+              }`
+            );
           if (
             parsedData.candidates &&
             parsedData.candidates[0] &&
@@ -107,7 +118,9 @@ export class WebSocketService {
             const parts = parsedData.candidates[0].content.parts;
             for (const part of parts) {
               if (part.text) {
-                this.ws.send(part.text);
+                const audioBuffer =
+                  await this.textToSpeechService.synthesizeSpeech(part.text);
+                this.ws.send(audioBuffer); // Send audio buffer instead of text
               } else if (part.inlineData) {
                 this.ws.send(part.inlineData.data); // Base64 encoded image
               }

@@ -48,6 +48,13 @@ export class GeminiService {
 
   public async generateChatResponseStreamed(sessionId: number, parts: Part[]) {
     try {
+      const systemPrompt =
+        "*You are a helpful assistant. Your responses will be passed trhough a text-to-speech service, for that reazon you should not use emojis or special characters.*";
+      for (const part of parts) {
+        if (part.text) {
+          part.text = `${systemPrompt} ${part.text}`;
+        }
+      }
       if (!this.chatSession || !this.chatSession[sessionId]) {
         throw new Error("Chat session not found");
       }
