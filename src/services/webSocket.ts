@@ -2,21 +2,30 @@ import WebSocket from "ws";
 import logger from "node-color-log";
 import { GeminiService } from "./gemini";
 import { TextToSpeechService } from "./tts";
-import { Part } from "@google/generative-ai";
+import {
+  EnhancedGenerateContentResponse,
+  GenerateContentStreamResult,
+  Part,
+} from "@google/generative-ai";
+import TextToImageService from "./textToImage";
+import { TagsEnum } from "./prompts";
 
 export class WebSocketService {
   private readonly ws: WebSocket;
   private geminiService: GeminiService;
-  private textToSpeechService: TextToSpeechService; // Add TTS service
+  private textToSpeechService: TextToSpeechService;
+  private textToImageService: TextToImageService;
 
   constructor(
     ws: WebSocket,
     geminiService: GeminiService,
-    textToSpeechService: TextToSpeechService
+    textToSpeechService: TextToSpeechService,
+    textToImageService: TextToImageService
   ) {
     this.ws = ws;
     this.geminiService = geminiService;
     this.textToSpeechService = textToSpeechService;
+    this.textToImageService = textToImageService;
     this.setupListeners();
   }
 
@@ -37,10 +46,10 @@ export class WebSocketService {
           sessionId,
           parts
         );
-        await this.sendStreamedResponse(result);
+        await this.handleStreamedResponse(result);
       } catch (error: any) {
         logger.color("red").log(`Error processing message: ${error.message}`);
-        this.ws.send(JSON.stringify({ error: error.message }));
+        this.sendToFrontend({ error: error.message });
       }
     });
 
@@ -91,53 +100,51 @@ export class WebSocketService {
     }
   }
 
-  private async sendStreamedResponse(result: any) {
+  private async handleStreamedResponse(result: GenerateContentStreamResult) {
     try {
-      if (!result || !result.stream) {
-        throw new Error("Invalid response from Gemini API");
+      for await (const chunk of result.stream) {
+        const textContent = chunk.text();
+        const audioBuffer = await this.textToSpeechService.synthesizeSpeech(
+          textContent
+        );
+        this.sendToFrontend({
+          text: textContent,
+          audio: audioBuffer.toString("base64"),
+        });
       }
 
-      for await (const chunk of result.stream) {
-        const dataToSend =
-          typeof chunk === "string" ? chunk : JSON.stringify(chunk);
-        try {
-          const parsedData = JSON.parse(dataToSend);
-          logger
-            .color("blue")
-            .log(
-              `Parsed data: ${
-                JSON.stringify(parsedData?.candidates[0]?.content?.parts) || ""
-              }`
-            );
-          if (
-            parsedData.candidates &&
-            parsedData.candidates[0] &&
-            parsedData.candidates[0].content &&
-            parsedData.candidates[0].content.parts
-          ) {
-            const parts = parsedData.candidates[0].content.parts;
-            for (const part of parts) {
-              if (part.text) {
-                const audioBuffer =
-                  await this.textToSpeechService.synthesizeSpeech(part.text);
-                this.ws.send(audioBuffer); // Send audio buffer instead of text
-              } else if (part.inlineData) {
-                this.ws.send(part.inlineData.data); // Base64 encoded image
-              }
-            }
-          } else {
-            logger
-              .color("red")
-              .log(`Invalid response format: ${JSON.stringify(parsedData)}`);
-          }
-        } catch (error) {
-          logger.color("red").log(`Error parsing or sending data: ${error}`);
-        }
-      }
+      // Handle the aggregated response to generate the image
+      const aggregatedResponse = await result.response;
+      this.generateImageFromResponse(aggregatedResponse);
     } catch (error: any) {
       logger
         .color("red")
-        .log(`Error in sendStreamedResponse: ${error.message}`);
+        .log(`Error in handleStreamedResponse: ${error.message}`);
     }
+  }
+
+  private async generateImageFromResponse(
+    aggregatedResponse: EnhancedGenerateContentResponse
+  ) {
+    try {
+      const textContent = aggregatedResponse.text();
+      const textPromptTag = TagsEnum.ImagePrompt;
+
+      if (textContent.includes(textPromptTag)) {
+        const [, prompt] = textContent.split(textPromptTag);
+        const imageUrl = await this.textToImageService.generateImage(
+          prompt.trim()
+        );
+        this.sendToFrontend({ imageUrl });
+      }
+    } catch (error: any) {
+      logger.color("red").log(`Error generating image: ${error.message}`);
+      this.sendToFrontend({ error: "Failed to generate image" });
+    }
+  }
+
+  private sendToFrontend(data: any) {
+    const jsonData = JSON.stringify(data);
+    this.ws.send(jsonData);
   }
 }

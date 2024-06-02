@@ -8,6 +8,7 @@ import { TextToSpeechService } from "./services/tts";
 import expressWs from "express-ws";
 import WebSocket from "ws";
 import { WebSocketService } from "./services/webSocket";
+import TextToImageService from "./services/textToImage";
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ class Server {
   private port: number;
   private geminiService: GeminiService;
   private textToSpeechService: TextToSpeechService;
+  private textToImageService: TextToImageService;
 
   constructor() {
     this.app = expressWs(express()).app;
@@ -25,6 +27,7 @@ class Server {
     this.port = 3000;
     this.geminiService = new GeminiService();
     this.textToSpeechService = new TextToSpeechService();
+    this.textToImageService = new TextToImageService();
     this.setupRoutes();
     this.setupWebsocket();
   }
@@ -36,7 +39,12 @@ class Server {
   private setupWebsocket() {
     this.app.ws("/api/audio-ws", (ws: WebSocket, _: express.Request) => {
       logger.color("green").log("WebSocket connection opened");
-      new WebSocketService(ws, this.geminiService, this.textToSpeechService);
+      new WebSocketService(
+        ws,
+        this.geminiService,
+        this.textToSpeechService,
+        this.textToImageService
+      );
     });
   }
 

@@ -5,6 +5,7 @@ import {
   Part,
 } from "@google/generative-ai";
 import logger from "node-color-log";
+import { systemPrompt } from "./prompts";
 
 export enum GeminiModels {
   GEMINI_1_5_PRO = "gemini-1.5-pro",
@@ -48,8 +49,6 @@ export class GeminiService {
 
   public async generateChatResponseStreamed(sessionId: number, parts: Part[]) {
     try {
-      const systemPrompt =
-        "*You are a helpful assistant. Your responses will be passed trhough a text-to-speech service, for that reazon you should not use emojis or special characters.*";
       for (const part of parts) {
         if (part.text) {
           part.text = `${systemPrompt} ${part.text}`;
