@@ -51,16 +51,18 @@ export class GeminiService {
     try {
       for (const part of parts) {
         if (part.text) {
-          part.text = `${systemPrompt} ${part.text}`;
+          part.text = `${systemPrompt}. User: ${part.text}`;
+          logger
+            .color("blue")
+            .log(
+              `Sending text to Gemini: ${part.text} for session ${sessionId}`
+            );
         }
       }
       if (!this.chatSession || !this.chatSession[sessionId]) {
         throw new Error("Chat session not found");
       }
 
-      logger
-        .color("blue")
-        .log(`Sending parts to Gemini: ${JSON.stringify(parts)}`);
       const result = await this.chatSession[sessionId].sendMessageStream(parts);
 
       if (!result || !result.stream) {

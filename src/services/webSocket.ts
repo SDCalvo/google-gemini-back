@@ -104,6 +104,7 @@ export class WebSocketService {
     try {
       for await (const chunk of result.stream) {
         const textContent = chunk.text();
+        logger.color("white").log(`Gemini: ${textContent}`);
         const audioBuffer = await this.textToSpeechService.synthesizeSpeech(
           textContent
         );
