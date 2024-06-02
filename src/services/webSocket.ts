@@ -15,6 +15,7 @@ export class WebSocketService {
   private geminiService: GeminiService;
   private textToSpeechService: TextToSpeechService;
   private textToImageService: TextToImageService;
+  private partialPrompt: string = "";
 
   constructor(
     ws: WebSocket,
@@ -104,19 +105,24 @@ export class WebSocketService {
     try {
       for await (const chunk of result.stream) {
         const textContent = chunk.text();
+
         logger.color("white").log(`Gemini: ${textContent}`);
-        const audioBuffer = await this.textToSpeechService.synthesizeSpeech(
-          textContent
-        );
-        this.sendToFrontend({
-          text: textContent,
-          audio: audioBuffer.toString("base64"),
-        });
+        const processedText = this.processTextChunk(textContent);
+        if (processedText) {
+          const audioBuffer = await this.textToSpeechService.synthesizeSpeech(
+            processedText
+          );
+          this.sendToFrontend({
+            text: processedText,
+            audio: audioBuffer.toString("base64"),
+          });
+        }
       }
 
-      // Handle the aggregated response to generate the image
+      // Handle the aggregated response to generate the image and parse choices
       const aggregatedResponse = await result.response;
       this.generateImageFromResponse(aggregatedResponse);
+      this.parseChoicesFromResponse(aggregatedResponse);
     } catch (error: any) {
       logger
         .color("red")
@@ -142,6 +148,75 @@ export class WebSocketService {
       logger.color("red").log(`Error generating image: ${error.message}`);
       this.sendToFrontend({ error: "Failed to generate image" });
     }
+  }
+
+  private parseChoicesFromResponse(
+    aggregatedResponse: EnhancedGenerateContentResponse
+  ) {
+    try {
+      const textContent = aggregatedResponse.text();
+      const choiceTag = TagsEnum.Choice;
+      let choices: string[] = [];
+
+      if (textContent.includes(choiceTag)) {
+        const [, choicesPart] = textContent.split(choiceTag);
+        choices = choicesPart.split(",").map((choice) => choice.trim());
+        this.sendToFrontend({ choices });
+      }
+    } catch (error: any) {
+      logger.color("red").log(`Error parsing choices: ${error.message}`);
+      this.sendToFrontend({ error: "Failed to parse choices" });
+    }
+  }
+
+  private processTextChunk(textContent: string): string | null {
+    const textPromptTag = TagsEnum.ImagePrompt;
+    const choiceTag = TagsEnum.Choice;
+
+    // Handle choice tags with regex to replace all occurrences
+    const choiceTagRegex = new RegExp(choiceTag, "g");
+    textContent = textContent.replace(choiceTagRegex, "");
+
+    // Handle partial prompts
+    if (this.partialPrompt) {
+      textContent = this.partialPrompt + textContent;
+      this.partialPrompt = "";
+    }
+
+    // Remove image prompt tags
+    if (textContent.includes(textPromptTag)) {
+      const parts = textContent.split(textPromptTag);
+
+      if (parts.length === 2) {
+        // Case 1: The chunk has some text and then the entire image prompt in the same chunk
+        const text = parts[0].trim();
+        this.partialPrompt = parts[1].trim();
+        return text ? text : null;
+      } else if (parts.length > 2) {
+        // Edge case handling, split by the prompt tag resulted in more than 2 parts
+        // Handle it by joining the later parts
+        const text = parts[0].trim();
+        this.partialPrompt = parts.slice(1).join(textPromptTag).trim();
+        return text ? text : null;
+      }
+    }
+
+    // Handle partial prompts at the end of the text content
+    if (textContent.endsWith(textPromptTag)) {
+      this.partialPrompt = textContent.trim();
+      return null;
+    }
+
+    // Handle the subsequent chunk case
+    if (this.partialPrompt) {
+      this.partialPrompt += textContent;
+      const text = this.partialPrompt.split(textPromptTag)[0].trim();
+      this.partialPrompt = "";
+      return text ? text : null;
+    }
+
+    // Regular chunk without any tags
+    return textContent ? textContent.trim() : null;
   }
 
   private sendToFrontend(data: any) {

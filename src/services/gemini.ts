@@ -1,5 +1,6 @@
 import {
   ChatSession,
+  Content,
   GenerativeModel,
   GoogleGenerativeAI,
   Part,
@@ -47,6 +48,10 @@ export class GeminiService {
     this.chatSession[id] = this.models[GeminiModels.GEMINI_1_5_PRO].startChat();
   }
 
+  public async getHistory(): Promise<Content[]> {
+    return this.chatSession[1].getHistory();
+  }
+
   public async generateChatResponseStreamed(sessionId: number, parts: Part[]) {
     try {
       for (const part of parts) {
@@ -59,6 +64,7 @@ export class GeminiService {
             );
         }
       }
+
       if (!this.chatSession || !this.chatSession[sessionId]) {
         throw new Error("Chat session not found");
       }

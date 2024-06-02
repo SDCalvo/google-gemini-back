@@ -3,6 +3,7 @@ import { imageStylePromptSufix } from "./prompts";
 
 class TextToImageService {
   private openai: OpenAI;
+  private imageHistory: string[] = [];
 
   constructor() {
     this.openai = new OpenAI({
@@ -20,11 +21,16 @@ class TextToImageService {
         size: "1024x1024",
       });
       const imageUrl = response.data[0].url;
+      if (imageUrl) this.imageHistory.push(imageUrl);
       return imageUrl || "";
     } catch (error) {
       console.error("Error generating image:", error);
       throw new Error("Failed to generate image");
     }
+  }
+
+  public getImageHistory() {
+    return this.imageHistory;
   }
 }
 
