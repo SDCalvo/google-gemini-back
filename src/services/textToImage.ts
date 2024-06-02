@@ -1,4 +1,5 @@
 import { OpenAI } from "openai";
+import { imageStylePromptSufix } from "./prompts";
 
 class TextToImageService {
   private openai: OpenAI;
@@ -11,9 +12,10 @@ class TextToImageService {
 
   public async generateImage(prompt: string): Promise<string> {
     try {
+      const promptWithSufix = prompt + imageStylePromptSufix;
       const response = await this.openai.images.generate({
         model: "dall-e-3",
-        prompt: prompt,
+        prompt: promptWithSufix,
         n: 1,
         size: "1024x1024",
       });

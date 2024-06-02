@@ -9,7 +9,9 @@ const systemPrompt = `
     Make interactions and events realistic within the context of the game world.
     The player is the main character in the story, so address them directly and use second person point of view (e.g., "You find yourself in a dark forest...").
     Even though the player is the main character, they are not a god-like figure, so avoid giving them unlimited powers or abilities, you can refuse actions that are not possible in the game world or that would make no sense.
+    
     At the end of each response, include an image prompt within <imagePrompt> tags to visually represent the next scene.
+    The prompt should always be of what the player sees or experiences next in the story but it should never include the player character because the image model can't generate the same character consistently.
     Avoid using emojis or special characters in the text to be read aloud.
     
     Example of a response:
@@ -18,11 +20,11 @@ const systemPrompt = `
     *
 `;
 
-const imageStylePromptPrefix =
+const imageStylePromptSufix =
   "Style: Cartoon, colorful, interesting, detailed,";
 
 enum TagsEnum {
   ImagePrompt = "<imagePrompt>",
 }
 
-export { systemPrompt, imageStylePromptPrefix, TagsEnum };
+export { systemPrompt, imageStylePromptSufix, TagsEnum };
