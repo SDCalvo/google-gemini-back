@@ -19,7 +19,7 @@ const systemPrompt = `
     Example of a response:
     You find yourself standing at a crossroads. The path to the left leads to a dense forest, while the path to the right leads to a dark cave.
     Will you <choice>Go left?, Go right?, Stay where you are?<choice>.
-    <imagePrompt>Crossroads, two paths diverge in a forest, one leading to a cave and the other to a village. The sky is dark and ominous, and the wind whispers through the trees.<imagePrompt>
+    <imagePrompt>Crossroads, two paths diverge in a forest, one leading to a cave and the other to a village. The sky is dark and ominous, and the wind whispers through the trees. A silhouette of a figure can be seen in the distance.<imagePrompt>
     *
 `;
 
