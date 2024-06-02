@@ -20,8 +20,7 @@ const systemPrompt = `
     *
 `;
 
-const imageStylePromptSufix =
-  "Style: Cartoon, colorful, interesting, detailed,";
+const imageStylePromptSufix = "Style: Cartoon, interesting, detailed, ";
 
 enum TagsEnum {
   ImagePrompt = "<imagePrompt>",
