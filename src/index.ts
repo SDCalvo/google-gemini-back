@@ -27,7 +27,7 @@ class Server {
     this.port = 3000;
     this.geminiService = new GeminiService();
     this.textToSpeechService = new TextToSpeechService();
-    this.textToImageService = new TextToImageService();
+    this.textToImageService = new TextToImageService(true);
     this.setupRoutes();
     this.setupWebsocket();
   }

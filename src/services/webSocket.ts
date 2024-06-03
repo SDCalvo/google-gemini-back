@@ -139,10 +139,10 @@ export class WebSocketService {
 
       if (textContent.includes(textPromptTag)) {
         const [, prompt] = textContent.split(textPromptTag);
-        const imageUrl = await this.textToImageService.generateImage(
+        const imageData = await this.textToImageService.generateImage(
           prompt.trim()
         );
-        this.sendToFrontend({ imageUrl });
+        this.sendToFrontend({ imageData });
       }
     } catch (error: any) {
       logger.color("red").log(`Error generating image: ${error.message}`);
